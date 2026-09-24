@@ -6,26 +6,38 @@ pub(crate) struct Credentials {
     pub(crate) password: String,
 }
 
-pub(crate) fn ask_mode() -> Result<Mode, String> {
+/// Asks for the mode, reprompting on invalid input.
+/// Returns `Ok(None)` on end-of-input (Ctrl-D), which the caller treats as quit.
+pub(crate) fn ask_mode() -> Result<Option<Mode>, String> {
     loop {
-        let answer = ask("mode [s]ecure / [i]nsecure: ")?;
+        let answer = match ask("mode [s]ecure / [i]nsecure: ")? {
+            Some(answer) => answer,
+            None => return Ok(None),
+        };
 
         match Mode::parse(&answer) {
-            Some(mode) => return Ok(mode),
+            Some(mode) => return Ok(Some(mode)),
             None => eprintln!("expected `s` or `i`, got {answer:?}"),
         }
     }
 }
 
-pub(crate) fn ask_credentials() -> Result<Credentials, String> {
-    let username = ask("username: ")?;
+/// Asks for username (stdin) and password (read from /dev/tty by rpassword).
+/// Returns `Ok(None)` if the username prompt hits end-of-input (quit).
+pub(crate) fn ask_credentials() -> Result<Option<Credentials>, String> {
+    let username = match ask("username: ")? {
+        Some(username) => username,
+        None => return Ok(None),
+    };
+
     let password = rpassword::prompt_password("password: ")
         .map_err(|error| format!("cannot read password: {error}"))?;
 
-    Ok(Credentials { username, password })
+    Ok(Some(Credentials { username, password }))
 }
 
-fn ask(question: &str) -> Result<String, String> {
+/// Reads one trimmed line from stdin. `Ok(None)` signals EOF (0 bytes read).
+fn ask(question: &str) -> Result<Option<String>, String> {
     print!("{question}");
     io::stdout()
         .flush()
@@ -37,8 +49,8 @@ fn ask(question: &str) -> Result<String, String> {
         .map_err(|error| format!("cannot read from stdin: {error}"))?;
 
     if bytes == 0 {
-        return Err("end of input".to_owned());
+        return Ok(None);
     }
 
-    Ok(line.trim().to_owned())
+    Ok(Some(line.trim().to_owned()))
 }

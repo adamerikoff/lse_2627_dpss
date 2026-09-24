@@ -44,6 +44,30 @@ services:
 
     stop_grace_period: 60s
 
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: lse-dpss-task1-2026-app
+    container_name: lse-dpss-task1-2026-app
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      # Override config.toml's host/port so the SAME binary reaches the db over
+      # the compose network instead of the host's published port.
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+
+    # The client is interactive and loops; run it on demand with `make app`
+    # (docker-compose exec, which attaches a TTY for the /dev/tty password
+    # prompt). The container itself just idles so it stays available to exec.
+    command: ["sleep", "infinity"]
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
 volumes:
   pgdata:
     name: lse-dpss-task1-2026-pgdata

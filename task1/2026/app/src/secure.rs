@@ -1,10 +1,7 @@
-use crate::{config, prompt, report};
+use crate::{config::DbSettings, prompt::Credentials, report};
 use postgres::NoTls;
 
-pub(crate) fn run() -> Result<(), String> {
-    let settings = config::load()?;
-    let credentials = prompt::ask_credentials()?;
-
+pub(crate) fn run(settings: &DbSettings, credentials: &Credentials) -> Result<(), String> {
     let mut connection = postgres::Config::new();
     connection
         .host(&settings.host)

@@ -1,0 +1,341 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# OS cruft
+# ─────────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.fseventsd
+.apdisk
+Icon?
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+.Trash-*
+.fuse_hidden*
+.nfs*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Editors / IDEs
+# ─────────────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.code-workspace
+.history/
+*.swp
+*.swo
+*.swn
+*~
+\#*\#
+.\#*
+.projectile
+nbproject/
+.settings/
+.project
+.classpath
+.metals/
+.bloop/
+tags
+TAGS
+.ccls-cache/
+.cache/
+compile_commands.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# C / C++
+# ─────────────────────────────────────────────────────────────────────────────
+*.o
+*.obj
+*.ko
+*.elf
+*.lo
+*.slo
+*.la
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.gch
+*.pch
+*.d
+*.su
+*.idb
+*.pdb
+*.ilk
+*.map
+*.dSYM/
+# gcov / gprof coverage
+*.gcno
+*.gcda
+*.gcov
+gmon.out
+# autotools
+.deps/
+.libs/
+*.lo
+autom4te.cache/
+config.log
+config.status
+configure~
+Makefile.in
+aclocal.m4
+compile
+depcomp
+install-sh
+missing
+ltmain.sh
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+CTestTestfile.cmake
+_deps/
+cmake-build-*/
+# sanitizers / valgrind
+*.asan
+*.tsan
+vgcore.*
+core.[0-9]*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rust
+# ─────────────────────────────────────────────────────────────────────────────
+target/
+**/*.rs.bk
+*.pdb
+*.profraw
+*.profdata
+# NOTE: Cargo.lock is intentionally NOT ignored — every crate here is a binary,
+# and a committed lockfile is what makes a build reproducible for the grader.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Elixir / Erlang / BEAM
+# ─────────────────────────────────────────────────────────────────────────────
+_build/
+deps/
+cover/
+.fetch
+erl_crash.dump
+*.ez
+*.beam
+*.plt
+*.plt.hash
+.dialyzer_plt
+.elixir_ls/
+.lexical/
+rel/
+!rel/config.exs
+.rebar3/
+rebar3.crashdump
+_checkouts/
+.erlang.cookie
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.tox/
+.nox/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+nosetests.xml
+.hypothesis/
+.ipynb_checkpoints/
+cython_debug/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Ruby
+# ─────────────────────────────────────────────────────────────────────────────
+*.gem
+*.rbc
+.bundle/
+vendor/bundle/
+.ruby-version
+.ruby-gemset
+.rvmrc
+.byebug_history
+.yardoc/
+_yardoc/
+rdoc/
+.rspec_status
+.sass-cache/
+# NOTE: Gemfile.lock is intentionally NOT ignored — these are applications,
+# not published gems.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Java / Groovy / JVM
+# ─────────────────────────────────────────────────────────────────────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.rar
+*.sar
+hs_err_pid*
+replay_pid*
+.mtj.tmp/
+# Gradle
+.gradle/
+gradle-app.setting
+.gradletasknamecache
+# Maven
+release.properties
+dependency-reduced-pom.xml
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+# Wrappers must stay tracked or the build is not reproducible on a clean clone
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+# Groovy
+*.groovyc
+.groovy/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node (web UI for задание 7, if any)
+# ─────────────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.next/
+.nuxt/
+.svelte-kit/
+.parcel-cache/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Credentials and key material
+#
+# NOTE: `.env` / `*.env` are deliberately NOT ignored. Задания 2, 3 and 7 all
+# require a committed Env file holding *demonstration* values, and a blanket
+# ignore here would silently drop a graded deliverable. Real credentials must
+# therefore never be written into those files — use the `.local` variants below,
+# or the secret stores from задание 6.
+# ─────────────────────────────────────────────────────────────────────────────
+.env.local
+.env.*.local
+*.local.env
+secrets.*
+!secrets.example.*
+*.pem
+*.key
+!**/testdata/*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+*.ppk
+.netrc
+.pgpass
+.vault-token
+vault-data/
+vault/file/
+.infisical.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAST / DAST scratch state (задания 8–10)
+#
+# Generated databases and working dirs only. Report artefacts (*.sarif, *.html,
+# *.json exports) are graded deliverables and stay tracked.
+# ─────────────────────────────────────────────────────────────────────────────
+codeql-db/
+*-codeql-db/
+.codeql/
+.scannerwork/
+.sonar/
+.semgrep/
+.semgrepignore.cache
+zap-session/
+*.session
+.zap/
+gosec-report.tmp
+crash-*
+leak-*
+timeout-*
+fuzz/corpus/
+fuzz/artifacts/
+fuzz/coverage/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Logs, archives, local scratch
+# ─────────────────────────────────────────────────────────────────────────────
+*.log
+logs/
+*.pid
+*.seed
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+tmp/
+scratch/

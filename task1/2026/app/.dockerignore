@@ -1,3 +1,0 @@
-# Keep the build context small and deterministic: never ship the host's
-# compiled artifacts into the image build.
-target

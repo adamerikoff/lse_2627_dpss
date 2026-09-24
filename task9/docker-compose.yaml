@@ -1,0 +1,73 @@
+name: lse-dpss-task9-2026
+
+services:
+  db:
+    image: postgres:18
+    container_name: lse-dpss-task9-2026-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
+      POSTGRES_DB: publicdb
+      POSTGRES_INITDB_ARGS: >-
+        --encoding=UTF8
+        --locale=C.UTF-8
+        --locale-provider=icu
+        --icu-locale=ru-RU
+        --auth-host=scram-sha-256
+        --auth-local=scram-sha-256
+        --data-checksums
+      TZ: Europe/Moscow
+      PGTZ: Europe/Moscow
+
+    ports:
+      - "${POSTGRES_PORT:-55440}:5432"
+
+    volumes:
+      # image declares VOLUME /var/lib/postgresql; PGDATA=/var/lib/postgresql/18/docker
+      - pgdata:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d publicdb",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+    stop_grace_period: 60s
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: lse-dpss-task9-2026-app
+    container_name: lse-dpss-task9-2026-app
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      # Override the host/port so the SAME binary reaches the db over the
+      # compose network instead of the host's published port.
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_HTTP_ADDR: 0.0.0.0:8080
+
+    ports:
+      - "${APP_HTTP_PORT:-58090}:8080"
+
+    # Scaffold only: the container idles so the stack stays up while the
+    # binary is still a stub. Launch it on demand with `make app`.
+    command: ["sleep", "infinity"]
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: lse-dpss-task9-2026-pgdata

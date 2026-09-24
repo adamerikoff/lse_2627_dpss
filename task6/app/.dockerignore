@@ -1,0 +1,117 @@
+# ============================================================================
+#  Docker build context filter   (build context = ./app)
+#
+#  Entries here are dropped BEFORE the daemon ever receives the context, so an
+#  excluded file cannot end up in an image layer. That matters beyond image
+#  size: layers are immutable and are published with the image, so a secret
+#  copied in by accident is a secret published — deleting it in a later layer
+#  does not remove it from the earlier one.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+#  Build artifacts — the only entries that matter for context SIZE.
+#
+#  A host `target/` is hundreds of MB, is linked against the host's libc, and
+#  is unusable inside the builder. Shipping it also defeats the layer cache:
+#  its contents change on every host `cargo build`, so the `COPY . ./` layer
+#  is invalidated on every image rebuild even when no source changed.
+# ----------------------------------------------------------------------------
+target/
+**/*.rs.bk
+*.profraw
+*.profdata
+
+# ----------------------------------------------------------------------------
+#  Version control and CI metadata — no runtime value, and `.git/` carries the
+#  full history of every file ever committed, including ones since removed.
+# ----------------------------------------------------------------------------
+.git/
+.gitignore
+.gitattributes
+.github/
+.gitlab-ci.yml
+
+# ----------------------------------------------------------------------------
+#  Docker's own files. The daemon already holds the Dockerfile out of band; a
+#  compose file inside the image only leaks the deployment topology.
+# ----------------------------------------------------------------------------
+Dockerfile*
+.dockerignore
+docker-compose*.yaml
+docker-compose*.yml
+
+# ----------------------------------------------------------------------------
+#  Credentials and key material.
+#
+#  NOTE: `config.toml` is deliberately NOT excluded — задание 2 requires the
+#  config file to be packed into the image. It therefore must never hold a
+#  password: credentials reach the process through the environment (задание 2)
+#  or through Vault (задание 6).
+# ----------------------------------------------------------------------------
+.env
+.env.*
+*.env
+secrets.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+.netrc
+.pgpass
+.vault-token
+vault-data/
+
+# ----------------------------------------------------------------------------
+#  Editor and OS cruft
+# ----------------------------------------------------------------------------
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+
+# ----------------------------------------------------------------------------
+#  SAST / DAST output and scratch state (задания 8–10). The reports are graded
+#  deliverables in the repository; they have no reason to sit in a runtime
+#  image, and a CodeQL database is larger than the image itself.
+# ----------------------------------------------------------------------------
+codeql-db/
+*-codeql-db/
+.codeql/
+.scannerwork/
+.sonar/
+.semgrep/
+zap-session/
+*.sarif
+fuzz/corpus/
+fuzz/artifacts/
+fuzz/coverage/
+
+# ----------------------------------------------------------------------------
+#  Logs, scratch, editor backups
+# ----------------------------------------------------------------------------
+*.log
+logs/
+*.pid
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+tmp/
+scratch/
+
+# ----------------------------------------------------------------------------
+#  Documentation — never read at runtime.
+# ----------------------------------------------------------------------------
+*.md

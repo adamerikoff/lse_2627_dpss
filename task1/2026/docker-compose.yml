@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
-      POSTGRES_DB: task1db
+      POSTGRES_DB: publicdb
       POSTGRES_INITDB_ARGS: >-
         --encoding=UTF8
         --locale=C.UTF-8
@@ -35,7 +35,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d task1db",
+          "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d publicdb",
         ]
       interval: 5s
       timeout: 5s

@@ -41,5 +41,27 @@ pub(crate) fn report(client: &mut Client) -> Result<(), String> {
     println!("search_path      = {search_path}");
     println!("==================================================");
 
+    // UNQUALIFIED on purpose: `data` resolves against whatever database this
+    // connection landed on. In `publicdb` it is public.data (innocuous rows); if
+    // the insecure builder let the user inject `dbname=secretdb`, the identical
+    // query now reads secretdb's data table and leaks its rows. Same SQL — the
+    // connection string alone decided the target.
+    let rows = client
+        .query("SELECT id, label FROM data ORDER BY id", &[])
+        .map_err(|error| format!("data query failed: {}", describe(&error)))?;
+
+    println!();
+    println!("--------------------------------------------------");
+    println!("               TABLE data ({} rows)", rows.len());
+    println!("--------------------------------------------------");
+    println!("  {:>3}  |  {}", "id", "label");
+    println!("  -----+-------------------------------------------");
+    for row in &rows {
+        let id: i32 = row.get(0);
+        let label: String = row.get(1);
+        println!("  {id:>3}  |  {label}");
+    }
+    println!("--------------------------------------------------");
+
     Ok(())
 }

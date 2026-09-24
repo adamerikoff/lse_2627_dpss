@@ -1,4 +1,4 @@
 host = "127.0.0.1"
 port = 55432
-dbname = "task1db"
+dbname = "publicdb"
 application_name = "task1-app"

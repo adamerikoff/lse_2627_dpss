@@ -1,0 +1,49 @@
+name: lse-dpss-task1-2026
+
+services:
+  db:
+    image: postgres:18
+    container_name: lse-dpss-task1-2026-postgres
+    restart: unless-stopped
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
+      POSTGRES_DB: task1db
+      POSTGRES_INITDB_ARGS: >-
+        --encoding=UTF8
+        --locale=C.UTF-8
+        --locale-provider=icu
+        --icu-locale=ru-RU
+        --auth-host=scram-sha-256
+        --auth-local=scram-sha-256
+        --data-checksums
+      TZ: Europe/Moscow
+      PGTZ: Europe/Moscow
+
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+
+    volumes:
+      # image declares VOLUME /var/lib/postgresql; PGDATA=/var/lib/postgresql/18/docker
+      - pgdata:/var/lib/postgresql
+      - ./db/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./db/initdb:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d task1db",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+    stop_grace_period: 60s
+
+volumes:
+  pgdata:
+    name: lse-dpss-task1-2026-pgdata

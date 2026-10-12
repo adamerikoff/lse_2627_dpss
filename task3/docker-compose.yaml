@@ -1,5 +1,10 @@
 name: lse-dpss-task3-2026
 
+# Два сервиса: postgres и клиент. Клиент (TUI) интерактивный, поэтому его
+# контейнер простаивает (sleep infinity), а сам клиент запускается через
+# docker-compose exec с TTY (make app) — в одной сети с СУБД (п. 6.9).
+# Для удобства клиент можно запускать и на хосте (make run).
+
 services:
   db:
     image: postgres:18
@@ -9,7 +14,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
-      POSTGRES_DB: publicdb
+      POSTGRES_DB: neobank
       POSTGRES_INITDB_ARGS: >-
         --encoding=UTF8
         --locale=C.UTF-8
@@ -25,15 +30,13 @@ services:
       - "${POSTGRES_PORT:-55434}:5432"
 
     volumes:
-      # image declares VOLUME /var/lib/postgresql; PGDATA=/var/lib/postgresql/18/docker
       - pgdata:/var/lib/postgresql
+      # 01-init.sql, 02-tables.sql, 03-seeds.sql выполняются по порядку при
+      # первой инициализации тома (п. 3, 4). ro: образ их только читает.
+      - ./app/sql:/docker-entrypoint-initdb.d:ro
 
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d publicdb",
-        ]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d neobank"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -45,23 +48,24 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: lse-dpss-task3-2026-app
+    image: lse-dpss-task3-2026-app:0.1.0
     container_name: lse-dpss-task3-2026-app
     depends_on:
       db:
         condition: service_healthy
 
+    # Цель подключения из .env (п. 6.10); host/port переопределяем на сеть
+    # compose. Логин и пароль вводятся в приложении (п. 6.6).
+    env_file: .env
     environment:
-      # Override the host/port so the SAME binary reaches the db over the
-      # compose network instead of the host's published port.
       APP_DB_HOST: db
       APP_DB_PORT: 5432
 
-    # Scaffold only: the container idles so the stack stays up while the
-    # binary is still a stub. Launch it on demand with `make app`.
+    volumes:
+      - ./logs:/app/logs
+
+    # Контейнер простаивает; клиент запускается через make app.
     command: ["sleep", "infinity"]
-    stdin_open: true
-    tty: true
     restart: unless-stopped
 
 volumes:

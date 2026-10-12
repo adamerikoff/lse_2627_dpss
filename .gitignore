@@ -339,3 +339,5 @@ logs/
 *.rej
 tmp/
 scratch/
+
+.env

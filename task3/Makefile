@@ -1,36 +1,57 @@
 APP_DIR := app
-BIN_DIR := $(APP_DIR)/target/debug
 COMPOSE := docker-compose
+PG := lse-dpss-task3-2026-postgres
 
-.PHONY: up down reset logs nuke app run
+.PHONY: up down reset nuke logs psql run runs app apps
 
-# Build images and start the whole stack (postgres + app). The app container
-# idles; launch the binary with `make app`.
+# ---------------------------------------------------------------------------
+#  Стек
+# ---------------------------------------------------------------------------
+
+# Собрать образ клиента и поднять postgres + клиент. Скрипты из app/sql
+# выполняются при первой инициализации тома.
 up:
 	$(COMPOSE) up -d --build
 
-# Stop and remove the stack (the named data volume is kept).
 down:
 	$(COMPOSE) down
 
-# Drop the volume so the database is initialised from scratch, then restart.
+# Удалить том, чтобы 01..03 выполнились заново на чистой базе.
 reset:
 	$(COMPOSE) down -v
 	$(COMPOSE) up -d --build
 
-# Follow the postgres server log.
+nuke:
+	$(COMPOSE) down -v --remove-orphans
+
+# Лог сервера.
 logs:
 	$(COMPOSE) logs -f db
 
-# Complete reset: containers, volume, locally-built images, orphans.
-nuke:
-	$(COMPOSE) down -v --rmi local --remove-orphans
+# Консоль psql как суперпользователь (для проверки, не для клиента).
+psql:
+	$(COMPOSE) exec db psql -U postgres -d neobank
 
-# Run the binary INSIDE its container (interactive TTY, reaches db:5432).
+# ---------------------------------------------------------------------------
+#  Клиент. Логин и пароль спрашиваются при запуске.
+#
+#  В контейнере (в одной сети с СУБД, п. 6.9), через exec с TTY:
+#      make app      уязвимая версия
+#      make apps     защищённая версия
+#
+#  На хосте (против 127.0.0.1:55434), для удобства:
+#      make run      уязвимая версия
+#      make runs     защищённая версия
+# ---------------------------------------------------------------------------
+
 app:
 	$(COMPOSE) exec app /app/app
 
-# Run the binary on the HOST, against the published port.
+apps:
+	$(COMPOSE) exec app /app/app --secure
+
 run:
-	cargo build --manifest-path $(APP_DIR)/Cargo.toml
-	$(BIN_DIR)/app
+	cargo run --manifest-path $(APP_DIR)/Cargo.toml
+
+runs:
+	cargo run --manifest-path $(APP_DIR)/Cargo.toml -- --secure

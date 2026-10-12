@@ -60,8 +60,6 @@ services:
     # Scaffold only: the container idles so the stack stays up while the
     # binary is still a stub. Launch it on demand with `make app`.
     command: ["sleep", "infinity"]
-    stdin_open: true
-    tty: true
     restart: unless-stopped
 
 volumes:

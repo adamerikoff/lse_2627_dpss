@@ -1,36 +1,148 @@
-APP_DIR := app
-BIN_DIR := $(APP_DIR)/target/debug
 COMPOSE := docker-compose
+PG := lse-dpss-task2-2026-postgres
+PINGERS := app-fails-1 app-fails-2 app-fails-3 app-fails-4 app-fails-none
 
-.PHONY: up down reset logs nuke app run
+# ===========================================================================
+#  Как устроена инъекция неисправностей
+#
+#  Контейнер netfault подключён через network_mode: "service:db", то есть
+#  делит сетевое пространство имён с PostgreSQL. Правила iptables, которые он
+#  ставит, действуют на тот самый интерфейс, за которым сидит сервер — как
+#  будто firewall стоит перед базой. Правила живут в этом netns и исчезают
+#  вместе с перезапуском контейнера db, поэтому сломанную демонстрацию всегда
+#  можно починить через make reset.
+#
+#  Сценарии 2 и 3 требуют долгого запроса. Своего файла запроса у пингеров
+#  нет, поэтому запрос подменяется переменной APP_QUERY, а контейнеры
+#  пересоздаются. Это осознанный выбор: переключение сценариев и так идёт
+#  через make, а файл пришлось бы монтировать и писать атомарно.
+# ===========================================================================
 
-# Build images and start the whole stack (postgres + app). The app container
-# idles; launch the binary with `make app`.
+.PHONY: up down reset nuke logs tail status \
+        fault-reject fault-drop fault-slow fault-cut fault-freeze heal
+
+# ---------------------------------------------------------------------------
+#  Стек
+# ---------------------------------------------------------------------------
+
+# Поднять всё: postgres, пять пингеров, netfault, dozzle.
+# Логи в браузере: http://localhost:58888
 up:
 	$(COMPOSE) up -d --build
 
-# Stop and remove the stack (the named data volume is kept).
 down:
 	$(COMPOSE) down
 
-# Drop the volume so the database is initialised from scratch, then restart.
+# Удалить том, чтобы postgres инициализировался заново. Заодно сбрасывает
+# все правила iptables — они жили в netns удалённого контейнера.
 reset:
 	$(COMPOSE) down -v
 	$(COMPOSE) up -d --build
 
-# Follow the postgres server log.
-logs:
-	$(COMPOSE) logs -f db
-
-# Complete reset: containers, volume, locally-built images, orphans.
 nuke:
 	$(COMPOSE) down -v --rmi local --remove-orphans
 
-# Run the binary INSIDE its container (interactive TTY, reaches db:5432).
-app:
-	$(COMPOSE) exec app /app/app
+# Логи пяти пингеров в терминале.
+logs:
+	$(COMPOSE) logs -f $(PINGERS)
 
-# Run the binary on the HOST, against the published port.
-run:
-	cargo build --manifest-path $(APP_DIR)/Cargo.toml
-	$(BIN_DIR)/app
+# Файлы логов, которые пишет сам сервис (п. 1.7).
+tail:
+	tail -f logs/*.log
+
+# Что сейчас сломано: правила firewall и состояние контейнера postgres.
+status:
+	@echo "--- iptables в сетевом пространстве postgres ---"
+	@$(COMPOSE) exec -T netfault iptables -L INPUT -n --line-numbers
+	@$(COMPOSE) exec -T netfault iptables -L OUTPUT -n --line-numbers
+	@echo "--- состояние контейнера postgres ---"
+	@docker inspect -f '{{.State.Status}}' $(PG)
+	@echo "--- установленные подключения к базе ---"
+	@$(COMPOSE) exec -T netfault sh -c "ss -tn state established '( sport = :5432 )'" || true
+
+# ---------------------------------------------------------------------------
+#  Неисправности
+#
+#  Каждая цель сначала выполняет heal, поэтому наложить две неисправности
+#  друг на друга невозможно. Это важно: iptables -A добавляет правило, а не
+#  заменяет, и два правила подряд сработали бы по первому совпадению.
+# ---------------------------------------------------------------------------
+
+# Сценарий 0 — мгновенный отказ.
+#
+# Что имитируем: закрытый порт. Ядро отвечает пакетом RST, клиент получает
+# Connection refused за миллисекунды.
+# Механизм: REJECT вместо DROP — firewall отвечает отказом вместо сервера.
+# Кто переживает: все пятеро. Это образец здорового отказа, защиты не нужны.
+fault-reject: heal
+	$(COMPOSE) exec -T netfault iptables -A INPUT -p tcp --dport 5432 \
+	  -j REJECT --reject-with tcp-reset
+	@echo "сценарий 0: мгновенный отказ. Все пятеро пишут ошибку сразу."
+
+# Сценарий 1 — тишина.
+#
+# Что имитируем: firewall с политикой DROP, недостижимый адрес, выключенную
+# машину. Ответа нет вообще, и ядро повторяет SYN около 127 секунд.
+# Механизм: DROP на входящие пакеты, поставленный ДО попытки подключения,
+# поэтому все висят в connect(). PostgreSQL о запросе не узнаёт.
+# Кто переживает: все, у кого есть connect_timeout, то есть все кроме fails1.
+fault-drop: heal
+	$(COMPOSE) exec -T netfault iptables -A INPUT -p tcp --dport 5432 -j DROP
+	@echo "сценарий 1: тишина. fails1 молчит, остальные отваливаются за 3 с."
+
+# Сценарий 2 — сервер занят.
+#
+# Что имитируем: долгий запрос. Соединение установлено, сервер работает и не
+# отвечает 30 секунд.
+# Механизм: pg_sleep честно занимает серверный процесс — это настоящая
+# работа, а не задержка в сети. FROM pg_sleep(30), а не просто pg_sleep(30),
+# потому что сам pg_sleep возвращает void, и такой ответ программа
+# справедливо сочла бы нетипичным (п. 1.3).
+# Кто переживает: все, у кого есть statement_timeout — fails3 и дальше.
+fault-slow: heal
+	APP_QUERY="SELECT version() FROM pg_sleep(30)" $(COMPOSE) up -d --no-deps $(PINGERS)
+	@echo "сценарий 2: fails1 и fails2 ждут 30 с, fails3 и далее отменяют на 5 с."
+
+# Сценарий 3 — обрыв пути.
+#
+# Что имитируем: исчезнувший маршрут, вычищенную запись NAT, отвалившийся
+# VPN. Соединение установлено, запрос отправлен, ответ не придёт никогда.
+# Кто переживает: только fails4 и failsnone.
+#
+# Механизм и два неочевидных условия:
+#
+# 1. Рубятся ОБА направления. Одно правило на INPUT отбрасывает только
+#    пакеты клиент -> сервер, а ответы сервера уходят через OUTPUT и
+#    продолжают доходить. Тогда statement_timeout срабатывает, ошибка
+#    доезжает до клиента, и вместо обрыва пути получается сценарий 2.
+#
+# 2. Пауза перед правилом короче statement_timeout (5 с). Иначе сервер
+#    успевает отменить запрос ровно к моменту, когда встают правила, — и
+#    снова получается сценарий 2. Долгий запрос нужен, чтобы соединение было
+#    установлено в этот момент: SELECT version() выполняется меньше
+#    миллисекунды, поймать его в полёте невозможно.
+fault-cut: heal
+	APP_QUERY="SELECT version() FROM pg_sleep(60)" $(COMPOSE) up -d --no-deps $(PINGERS)
+	sleep 2
+	$(COMPOSE) exec -T netfault iptables -A INPUT -p tcp --dport 5432 -j DROP
+	$(COMPOSE) exec -T netfault iptables -A OUTPUT -p tcp --sport 5432 -j DROP
+	@echo "сценарий 3: восстановятся только fails4 и failsnone."
+
+# Сценарий 4 — замороженный сервер.
+#
+# Что имитируем: gray failure — сервер в свопе, процесс в непрерываемом
+# ожидании диска, балансировщик перед мёртвыми backend'ами.
+# Механизм: cgroup freezer останавливает процессы контейнера, но сетевой
+# стек — это ядро хоста, и оно продолжает подтверждать пакеты и отвечать на
+# keepalive-пробы. Правил firewall нет вообще: сеть исправна, в этом и суть.
+# Кто переживает: только failsnone, у которого дедлайн на всю пробу.
+fault-freeze: heal
+	docker pause $(PG)
+	@echo "сценарий 4: восстановится только failsnone."
+
+# Снять все неисправности и вернуть обычный запрос.
+heal:
+	-docker unpause $(PG) 2>/dev/null
+	-$(COMPOSE) exec -T netfault iptables -F INPUT
+	-$(COMPOSE) exec -T netfault iptables -F OUTPUT
+	APP_QUERY= $(COMPOSE) up -d --no-deps $(PINGERS)

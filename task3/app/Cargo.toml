@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ratatui = "0.30.2"
+crossterm = "0.29.0"
+tui-input = "0.15.5"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+postgres = "0.19.14"
+dotenvy = "0.15.7"
+envy = "0.4.2"
+serde = { version = "1.0.229", features = ["derive"] }

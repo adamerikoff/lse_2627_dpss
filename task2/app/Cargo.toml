@@ -4,3 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# default-features = false keeps out `oldtime` and `wasmbind`; `clock` gives
+# Utc::now(), `std` gives the formatting. Three crates on this target.
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+config = { version = "0.15.27", default-features = false, features = ["toml"] }
+fern = "0.7.1"
+log = "0.4.34"
+postgres = "0.19.14"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.6"

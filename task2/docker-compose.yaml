@@ -7,8 +7,8 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
+      POSTGRES_USER: ${APP_DB_USER}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
       POSTGRES_DB: publicdb
       POSTGRES_INITDB_ARGS: >-
         --encoding=UTF8
@@ -25,15 +25,10 @@ services:
       - "${POSTGRES_PORT:-55433}:5432"
 
     volumes:
-      # image declares VOLUME /var/lib/postgresql; PGDATA=/var/lib/postgresql/18/docker
       - pgdata:/var/lib/postgresql
 
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d publicdb",
-        ]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d publicdb"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -41,27 +36,126 @@ services:
 
     stop_grace_period: 60s
 
-  app:
+  # Вносит сетевые неисправности в том же сетевом пространстве имён, что и
+  # postgres: iptables здесь действует на интерфейс, за которым сидит сервер.
+  # Правила исчезают при перезапуске db — сломанная демонстрация чинится сама.
+  netfault:
+    image: nicolaka/netshoot
+    container_name: lse-dpss-task2-2026-netfault
+    network_mode: "service:db"
+    cap_add:
+      - NET_ADMIN
+    command: ["sleep", "infinity"]
+    depends_on:
+      - db
+
+  # Логи всех контейнеров в браузере: http://localhost:58888
+  # Читает лог-драйвер Docker через сокет, к приложениям не подключается.
+  #
+  # Смонтированный docker.sock эквивалентен root на хосте; :ro ограничивает
+  # запись в сам файл сокета, а не возможности через него. Для локальной
+  # демонстрации приемлемо.
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: lse-dpss-task2-2026-dozzle
+    restart: unless-stopped
+    ports:
+      - "${DOZZLE_PORT:-58888}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # ---------------------------------------------------------------------------
+  #  Пять экземпляров одного образа. Отличаются только командой.
+  #  Имя — номер сценария, на котором экземпляр зависает.
+  #
+  #  depends_on намеренно без condition: service_healthy — задание требует
+  #  показать неуспешное первое подключение и успешное второе, поэтому пингеры
+  #  стартуют раньше, чем postgres закончит инициализацию.
+  # ---------------------------------------------------------------------------
+
+  app-fails-1:
+    image: lse-dpss-task2-2026-app:0.1.0
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: lse-dpss-task2-2026-app
-    container_name: lse-dpss-task2-2026-app
-    depends_on:
-      db:
-        condition: service_healthy
-
+    container_name: lse-dpss-task2-2026-fails1
+    command: ["/app/fails1"]
+    env_file: .env
     environment:
-      # Override the host/port so the SAME binary reaches the db over the
-      # compose network instead of the host's published port.
       APP_DB_HOST: db
       APP_DB_PORT: 5432
+      # Переопределяет ключ query из config.toml. Пусто — запрос из файла;
+      # make fault-slow подставляет сюда SELECT pg_sleep(...).
+      APP_QUERY: ${APP_QUERY:-}
+      APP_LOG_FILE: /app/logs/fails1.log
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+    restart: unless-stopped
 
-    # Scaffold only: the container idles so the stack stays up while the
-    # binary is still a stub. Launch it on demand with `make app`.
-    command: ["sleep", "infinity"]
-    stdin_open: true
-    tty: true
+  app-fails-2:
+    image: lse-dpss-task2-2026-app:0.1.0
+    container_name: lse-dpss-task2-2026-fails2
+    command: ["/app/fails2"]
+    env_file: .env
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_QUERY: ${APP_QUERY:-}
+      APP_LOG_FILE: /app/logs/fails2.log
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  app-fails-3:
+    image: lse-dpss-task2-2026-app:0.1.0
+    container_name: lse-dpss-task2-2026-fails3
+    command: ["/app/fails3"]
+    env_file: .env
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_QUERY: ${APP_QUERY:-}
+      APP_LOG_FILE: /app/logs/fails3.log
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  app-fails-4:
+    image: lse-dpss-task2-2026-app:0.1.0
+    container_name: lse-dpss-task2-2026-fails4
+    command: ["/app/fails4"]
+    env_file: .env
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_QUERY: ${APP_QUERY:-}
+      APP_LOG_FILE: /app/logs/fails4.log
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  app-fails-none:
+    image: lse-dpss-task2-2026-app:0.1.0
+    container_name: lse-dpss-task2-2026-failsnone
+    command: ["/app/failsnone"]
+    env_file: .env
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_QUERY: ${APP_QUERY:-}
+      APP_LOG_FILE: /app/logs/failsnone.log
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
     restart: unless-stopped
 
 volumes:
